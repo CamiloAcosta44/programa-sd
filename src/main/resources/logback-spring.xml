@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Variable para identificar la réplica en cada línea de log -->
+    <springProperty scope="context" name="APP_ID" source="program.id" defaultValue="local"/>
+
+    <!-- ── Consola (Docker la captura automáticamente) ─────────────────── -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [${APP_ID}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ── Archivo con rotación diaria ────────────────────────────────── -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/app/logs/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Un archivo por día, guardando los últimos 30 días -->
+            <fileNamePattern>/app/logs/app-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [${APP_ID}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ── Archivo exclusivo para errores ─────────────────────────────── -->
+    <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/app/logs/error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/app/logs/error-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [${APP_ID}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Nivel general -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="FILE_ERROR"/>
+    </root>
+
+    <!-- Silenciar logs muy verbosos de Hibernate -->
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+
+</configuration>

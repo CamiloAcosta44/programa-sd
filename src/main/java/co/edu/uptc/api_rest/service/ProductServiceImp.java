@@ -12,9 +12,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class ProductServiceImp implements ProductService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductServiceImp.class);
 
     private final ProductRepository productRepository;
 
@@ -29,13 +33,12 @@ public class ProductServiceImp implements ProductService {
     @Override
     @Transactional(readOnly = true) // optimiza la transacción: solo lectura
     public Page<ProductDTO> getAllProducts(int page, int size) {
-        // Limita a máximo 100 por página para proteger la memoria
+        log.info("Consultando productos - página: {}, tamaño: {}", page, size);
+
         int safeSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, safeSize);
 
-        // findAll(Pageable) genera: SELECT * FROM products LIMIT ? OFFSET ?
-        // Solo trae 'safeSize' registros a memoria — nunca los 5 millones
-        return productRepository.findAll(pageable)
+        Page<ProductDTO> result = productRepository.findAll(PageRequest.of(page, safeSize))
                 .map(product -> {
                     ProductDTO dto = new ProductDTO();
                     dto.setName(product.getName());
@@ -43,19 +46,27 @@ public class ProductServiceImp implements ProductService {
                     dto.setProgram(program);
                     return dto;
                 });
+        log.info("Retornando {} productos de {} totales", result.getNumberOfElements(), result.getTotalElements());
+        return result;
     }
 
     @Override
     public ProductResponseDTO saveProduct(ProductRequestDTO requestDTO) {
-        Product newProduct = new Product(null, requestDTO.getName(), requestDTO.getPrice());
-        Product saved = productRepository.save(newProduct);
+        log.info("Creando producto: nombre='{}', precio={}", requestDTO.getName(), requestDTO.getPrice());
+        try {
+            Product newProduct = new Product(null, requestDTO.getName(), requestDTO.getPrice());
+            Product saved = productRepository.save(newProduct);
+            log.info("Producto creado con ID={} en réplica {}", saved.getId(), program);
 
-        ProductResponseDTO responseDTO = new ProductResponseDTO();
-        responseDTO.setId(saved.getId());
-        responseDTO.setName(saved.getName());
-        responseDTO.setPrice(saved.getPrice());
-        responseDTO.setMessage("Producto agregado exitosamente - réplica: " + program);
-
-        return responseDTO;
+            ProductResponseDTO responseDTO = new ProductResponseDTO();
+            responseDTO.setId(saved.getId());
+            responseDTO.setName(saved.getName());
+            responseDTO.setPrice(saved.getPrice());
+            responseDTO.setMessage("Producto agregado exitosamente - réplica: " + program);
+            return responseDTO;
+        } catch (Exception e) {
+            log.error("Error al guardar producto '{}': {}", requestDTO.getName(), e.getMessage(), e);
+            throw e;
+        }
     }
 }
