@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -75,5 +76,27 @@ public class ProductController {
                 "replica", programId,
                 "status", "UP"
         );
+    }
+
+    @Operation(
+            summary = "Generar carga de CPU",
+            description = "Genera carga artificial de CPU durante N segundos para pruebas de autoescalado"
+    )
+    @ApiResponse(responseCode = "200", description = "Carga generada exitosamente")
+    @GetMapping("/load")
+    public Map<String, Object> generateLoad(
+            @Parameter(description = "Segundos de carga", example = "10")
+            @RequestParam(defaultValue = "10") int seconds) {
+        long endTime = System.currentTimeMillis() + (seconds * 1000L);
+        long iterations = 0;
+        while (System.currentTimeMillis() < endTime) {
+            Math.sqrt(Math.random() * 999999);
+            iterations++;
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("replica", System.getenv("HOSTNAME"));
+        result.put("iterations", iterations);
+        result.put("seconds", seconds);
+        return result;
     }
 }
